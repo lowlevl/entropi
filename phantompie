@@ -1,0 +1,51 @@
+#!/bin/bash
+
+distroImage=https://downloads.raspberrypi.org/raspbian_lite_latest
+
+# Propose user to download if there is no image..
+if [ -z "$(ls -1 images/*-raspbian-*.img)" ]
+then
+  echo -e "No image found in 'images/' dir.\n"
+  read -p "Download image from downloads.raspberrypi.org [Yy/Nn]? " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]
+  then
+    echo "Ok exiting, download image yourself and put it in 'images/' dir."
+    exit 1
+  fi
+
+  # Making tmp dir for download
+  echo "Making dir.."
+  mkdir -p /tmp/phantompie
+
+  # Getting image
+  echo "Starting download.."
+  wget $distroImage -O /tmp/phantompie/image.zip
+
+  # Unziping & Cleaning
+  echo "Unziping.."
+  unzip -uo /tmp/phantompie/image.zip -d images/
+  rm /tmp/phantompie/image.zip
+fi
+
+imageList=$(ls images/*-raspbian-*.img 2>/dev/null)
+imageCount=$(ls -1 images/*-raspbian-*.img 2>/dev/null | wc -l)
+selectedFile=""
+
+if [ $imageCount -gt 1 ]
+then
+  echo -e "Please select an image:\n"
+  PS3="Type a number or 'q' to quit: "
+ 
+  select fileName in $imageList
+  do
+    if [ -n "$fileName" ]
+    then
+      selectedFile=$fileName
+    fi
+    break
+  done
+else
+  selectedFile=$imageList
+  echo "Using '$selectedFile' by default."
+fi
