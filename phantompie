@@ -1,9 +1,16 @@
 #!/bin/bash
 
 distroImage=https://downloads.raspberrypi.org/raspbian_lite_latest
+bootMount=/mnt/image/boot
+rootMount=/mnt/image/root
 
-# Propose user to download if there is no image..
-if [ -z "$(ls -1 images/*-raspbian-*.img)" ]
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+# Ask user to download if there is no image..
+if [ -z "$(ls -1 images/*-raspbian-*.img 2>/dev/null)" ]
 then
   echo -e "No image found in 'images/' dir.\n"
   read -p "Download image from downloads.raspberrypi.org [Yy/Nn]? " -n 1 -r
@@ -14,26 +21,36 @@ then
     exit 1
   fi
 
+  echo "Image download.."
+
   # Making tmp dir for download
-  echo "Making dir.."
+  echo -n "  -> Making dir.. "
   mkdir -p /tmp/phantompie
+  echo "Ok."
 
   # Getting image
-  echo "Starting download.."
-  wget $distroImage -O /tmp/phantompie/image.zip
+  echo "  -> Downloading.. "
+  wget $distroImage -O /tmp/phantompie/image.zip -q --show-progress
+  echo "Ok."
 
-  # Unziping & Cleaning
-  echo "Unziping.."
-  unzip -uo /tmp/phantompie/image.zip -d images/
-  rm /tmp/phantompie/image.zip
+  # Unziping
+  echo -n "  -> Unziping.. "
+  unzip -uo /tmp/phantompie/image.zip -d images/ > /dev/null
+  echo "Ok."
+  
+  echo -n "  -> Cleaning.. "
+  rm -f /tmp/phantompie/image.zip 
+  echo -e "Ok\n"
 fi
 
 imageList=$(ls images/*-raspbian-*.img 2>/dev/null)
 imageCount=$(ls -1 images/*-raspbian-*.img 2>/dev/null | wc -l)
 selectedFile=""
 
+echo -e "Searching for image.. "
 if [ $imageCount -gt 1 ]
 then
+  echo "Found $imageCount"
   echo -e "Please select an image:\n"
   PS3="Type a number or 'q' to quit: "
  
@@ -46,6 +63,62 @@ then
     break
   done
 else
+  echo "Found 1"
   selectedFile=$imageList
-  echo "Using '$selectedFile' by default."
 fi
+
+echo "Using: $selectedFile"
+
+echo "Mounting.."
+echo -n "  -> Making dirs.."
+# Make dirs
+mkdir -p $bootMount
+mkdir -p $rootMount
+echo "Ok"
+
+# Get sector offsets
+echo -n "  -> Getting img spec.."
+bootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '1p')*512))
+rootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '2p')*512))
+echo "Ok"
+
+# Mount
+echo -n "  -> Mounting /boot to $bootMount.."
+mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
+echo "Ok"
+echo -n "  -> Mounting / to $rootMount"
+mount -v -o offset=$rootOffset -t ext4 $selectedFile $rootMount > /dev/null
+echo -e "Ok\n"
+
+echo "Chrooting.."
+# Mount all system stuff
+echo -n "  -> System mount"
+mount --bind /dev $rootMount/dev
+mount -t proc /proc $rootMount/proc
+mount -t sysfs /sys $rootMount/sys
+echo "Ok"
+
+# File requierements
+echo -n "  -> Chroot file workaround"
+cp /etc/resolv.conf $rootMount/etc/resolv.conf
+cp /usr/bin/qemu-arm-static $rootMount/usr/bin/
+mv $rootMount/etc/ld.so.preload $rootMount/etc/ld.so.preload.bak
+echo "Ok"
+
+# Chroot
+echo "  *** Chrooting ***"
+chroot $rootMount /bin/bash
+
+# Remove unused chroot files
+rm $rootMount/etc/resolv.conf
+rm $rootMount/usr/bin/qemu-arm-static
+mv $rootMount/etc/ld.so.preload.bak $rootMount/etc/ld.so.preload
+
+# Umount all system thing
+sudo umount $rootMount/dev
+sudo umount $rootMount/proc
+sudo umount $rootMount/sys
+
+# Umount image
+umount $bootMount
+umount -lf $rootMount
