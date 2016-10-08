@@ -94,6 +94,7 @@ echo "Chrooting.."
 # Mount all system stuff
 echo -n "  -> System mount"
 mount --bind /dev $rootMount/dev
+mount --bind /dev/pts $rootMount/dev/pts
 mount -t proc /proc $rootMount/proc
 mount -t sysfs /sys $rootMount/sys
 echo "Ok"
@@ -115,10 +116,9 @@ rm $rootMount/usr/bin/qemu-arm-static
 mv $rootMount/etc/ld.so.preload.bak $rootMount/etc/ld.so.preload
 
 # Umount all system thing
-sudo umount $rootMount/dev
-sudo umount $rootMount/proc
-sudo umount $rootMount/sys
-
-# Umount image
+umount $rootMount/dev/pts
+umount $rootMount/dev
+umount $rootMount/proc
+umount $rootMount/sys
 umount $bootMount
 umount -lf $rootMount
