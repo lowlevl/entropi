@@ -25,21 +25,21 @@ then
 
   # Making tmp dir for download
   echo -n "  -> Making dir.. "
-  mkdir -p /tmp/phantompie
+  mkdir -p /tmp
   echo "Ok."
 
   # Getting image
   echo "  -> Downloading.. "
-  wget $distroImage -O /tmp/phantompie/image.zip -q --show-progress
+  wget $distroImage -O /tmp/raspbian.zip -q --show-progress
   echo "Ok."
 
   # Unziping
   echo -n "  -> Unziping.. "
-  unzip -uo /tmp/phantompie/image.zip -d images/ > /dev/null
+  unzip -uo /tmp/raspbian.zip -d images/ > /dev/null
   echo "Ok."
   
   echo -n "  -> Cleaning.. "
-  rm -f /tmp/phantompie/image.zip 
+  rm -f /tmp/raspbian.zip 
   echo -e "Ok\n"
 fi
 
@@ -47,7 +47,7 @@ imageList=$(ls images/*-raspbian-*.img 2>/dev/null)
 imageCount=$(ls -1 images/*-raspbian-*.img 2>/dev/null | wc -l)
 selectedFile=""
 
-echo -e "Searching for image.. "
+echo "Searching for image.. "
 if [ $imageCount -gt 1 ]
 then
   echo "Found $imageCount"
