@@ -10,7 +10,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 # Ask user to download if there is no image..
-if [ -z "$(ls -1 images/*-raspbian-*.img 2>/dev/null)" ]
+if [ -z "$(ls -1 images/*.img 2>/dev/null)" ]
 then
   echo -e "No image found in 'images/' dir.\n"
   read -p "Download image from downloads.raspberrypi.org [Yy/Nn]? " -n 1 -r
@@ -37,15 +37,15 @@ then
   echo -n "  -> Unziping.. "
   unzip -uo /tmp/raspbian.zip -d images/ > /dev/null
   echo "Ok."
-  
+
   echo -n "  -> Cleaning.. "
-  rm -f /tmp/raspbian.zip 
+  rm -f /tmp/raspbian.zip
   echo -e "Ok\n"
 fi
 
-imageList=$(ls images/*-raspbian-*.img 2>/dev/null)
-imageCount=$(ls -1 images/*-raspbian-*.img 2>/dev/null | wc -l)
-selectedFile=""
+imageList=$(ls images/*.img 2>/dev/null)
+imageCount=$(ls -1 images/*.img 2>/dev/null | wc -l)
+selectedFile=''
 
 echo "Searching for image.. "
 if [ $imageCount -gt 1 ]
@@ -53,7 +53,7 @@ then
   echo "Found $imageCount"
   echo -e "Please select an image:\n"
   PS3="Type a number or 'q' to quit: "
- 
+
   select fileName in $imageList
   do
     if [ -n "$fileName" ]
@@ -62,6 +62,10 @@ then
     fi
     break
   done
+  if [ "$selectedFile" == '' ]
+  then
+    exit 1
+  fi
 else
   echo "Found 1"
   selectedFile=$imageList
@@ -69,62 +73,98 @@ fi
 
 echo "Using: $selectedFile"
 
-echo "Mounting.."
-echo -n "  -> Making dirs.. "
-# Make dirs
-mkdir -p $bootMount
-mkdir -p $rootMount
-echo "Ok"
+function mountImage() {
+  echo -n "  -> Making dirs.. "
+  # Make dirs
+  mkdir -p $bootMount
+  mkdir -p $rootMount
+  echo "Ok"
 
-# Get sector offsets
-echo -n "  -> Getting img spec.. "
-bootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '1p')*512))
-rootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '2p')*512))
-echo "Ok"
+  # Get sector offsets
+  echo -n "  -> Getting img spec.. "
+  bootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '1p')*512))
+  rootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '2p')*512))
+  echo "Ok"
 
-# Mount
-echo -n "  -> Mounting /boot to $bootMount.. "
-mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
-echo "Ok"
-echo -n "  -> Mounting / to $rootMount.. "
-mount -v -o offset=$rootOffset -t ext4 $selectedFile $rootMount > /dev/null
-echo -e "Ok\n"
+  # Mount
+  echo -n "  -> Mounting /boot to $bootMount.. "
+  mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
+  echo "Ok"
+  echo -n "  -> Mounting / to $rootMount.. "
+  mount -v -o offset=$rootOffset -t ext4 $selectedFile $rootMount > /dev/null
+  echo -e "Ok\n"
+}
+function umountImage() {
+  # Umount all system thing
+  echo -n "  -> Umounting image.. "
+  umount $bootMount
+  umount -lf $rootMount
+  echo "Done"
+}
 
-echo "Chroot.."
-# Mount all system stuff
-echo -n "  -> System mount.. "
-mount --bind /dev $rootMount/dev
-mount --bind /dev/pts $rootMount/dev/pts
-mount -t proc /proc $rootMount/proc
-mount -t sysfs /sys $rootMount/sys
-echo "Ok"
+function doChroot() {
+  # Mount all system stuff
+  echo -n "  -> System mount.. "
+  mount --bind /dev $rootMount/dev
+  mount --bind /dev/pts $rootMount/dev/pts
+  mount -t proc /proc $rootMount/proc
+  mount -t sysfs /sys $rootMount/sys
+  echo "Ok"
 
-# File requierements
-echo -n "  -> Chroot file workaround.. "
-cp /etc/resolv.conf $rootMount/etc/resolv.conf
-cp /usr/bin/qemu-arm-static $rootMount/usr/bin/
-mv $rootMount/etc/ld.so.preload $rootMount/etc/ld.so.preload.bak
-echo "Ok"
+  # File requierements
+  echo -n "  -> Chroot file workaround.. "
+  cp /etc/resolv.conf $rootMount/etc/resolv.conf
+  cp /usr/bin/qemu-arm-static $rootMount/usr/bin/
+  mv $rootMount/etc/ld.so.preload $rootMount/etc/ld.so.preload.bak
+  echo "Ok"
+}
+function doneChroot() {
+  # Remove unused chroot files
+  echo -n "  -> Removing workaround files.. "
+  rm $rootMount/etc/resolv.conf
+  rm $rootMount/usr/bin/qemu-arm-static
+  mv $rootMount/etc/ld.so.preload.bak $rootMount/etc/ld.so.preload
+  echo "Ok"
 
-# Chroot
-echo "*** Chrooting ***"
-chroot $rootMount /bin/bash
+  echo -n "  -> Umounting chroot devices.. "
+  umount $rootMount/dev/pts
+  umount $rootMount/dev
+  umount $rootMount/proc
+  umount $rootMount/sys
+  echo "Ok"
+}
 
-echo "/!\\ Chroot exited /!\\"
+function moduleScript() {
+  moduleList=$(ls -1 modules/*.load | sed 's/.load//')
 
-# Remove unused chroot files
-echo -n "  -> Removing workaround files.. "
-rm $rootMount/etc/resolv.conf
-rm $rootMount/usr/bin/qemu-arm-static
-mv $rootMount/etc/ld.so.preload.bak $rootMount/etc/ld.so.preload
-echo "Ok."
+  mkdir -p $rootMount/tmp/modules
+  echo "#bin/sh" > $rootMount/tmp/modules.sh
+  for modulePath in $moduleList
+  do
+    cp $modulePath $rootMount/tmp/modules
+    echo "sh /tmp/$modulePath" >> $rootMount/tmp/modules.sh
+  done
 
-# Umount all system thing
-echo -n "  -> Umounting all.. "
-umount $rootMount/dev/pts
-umount $rootMount/dev
-umount $rootMount/proc
-umount $rootMount/sys
-umount $bootMount
-umount -lf $rootMount
-echo "Done."
+  echo "rm -rf /tmp/*" >> $rootMount/tmp/modules.sh
+}
+
+# Mounting image to $rootMount & $bootMount
+mountImage
+# Adding chroot files & mount chroot stuff
+doChroot
+
+echo -e "\nEverything ready for chroot !\n"
+
+# Generating script
+echo -n "Generating modulestart script.. "
+moduleScript
+echo "Done"
+
+# Launch chroot
+echo "  *** Starting modulestart script ***"
+chroot $rootMount /bin/sh /tmp/modules.sh
+
+# Remove chroot related files & umount chroot stuff
+doneChroot
+# Umount image
+umountImage
