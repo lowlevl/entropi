@@ -70,29 +70,29 @@ fi
 echo "Using: $selectedFile"
 
 echo "Mounting.."
-echo -n "  -> Making dirs.."
+echo -n "  -> Making dirs.. "
 # Make dirs
 mkdir -p $bootMount
 mkdir -p $rootMount
 echo "Ok"
 
 # Get sector offsets
-echo -n "  -> Getting img spec.."
+echo -n "  -> Getting img spec.. "
 bootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '1p')*512))
 rootOffset=$(($(fdisk -l -o start $selectedFile | sed '1,/Start/d' | tr -d ' ' | sed -n '2p')*512))
 echo "Ok"
 
 # Mount
-echo -n "  -> Mounting /boot to $bootMount.."
+echo -n "  -> Mounting /boot to $bootMount.. "
 mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
 echo "Ok"
-echo -n "  -> Mounting / to $rootMount"
+echo -n "  -> Mounting / to $rootMount.. "
 mount -v -o offset=$rootOffset -t ext4 $selectedFile $rootMount > /dev/null
 echo -e "Ok\n"
 
-echo "Chrooting.."
+echo "Chroot.."
 # Mount all system stuff
-echo -n "  -> System mount"
+echo -n "  -> System mount.. "
 mount --bind /dev $rootMount/dev
 mount --bind /dev/pts $rootMount/dev/pts
 mount -t proc /proc $rootMount/proc
@@ -100,25 +100,31 @@ mount -t sysfs /sys $rootMount/sys
 echo "Ok"
 
 # File requierements
-echo -n "  -> Chroot file workaround"
+echo -n "  -> Chroot file workaround.. "
 cp /etc/resolv.conf $rootMount/etc/resolv.conf
 cp /usr/bin/qemu-arm-static $rootMount/usr/bin/
 mv $rootMount/etc/ld.so.preload $rootMount/etc/ld.so.preload.bak
 echo "Ok"
 
 # Chroot
-echo "  *** Chrooting ***"
+echo "*** Chrooting ***"
 chroot $rootMount /bin/bash
 
+echo "/!\\ Chroot exited /!\\"
+
 # Remove unused chroot files
+echo -n "  -> Removing workaround files.. "
 rm $rootMount/etc/resolv.conf
 rm $rootMount/usr/bin/qemu-arm-static
 mv $rootMount/etc/ld.so.preload.bak $rootMount/etc/ld.so.preload
+echo "Ok."
 
 # Umount all system thing
+echo -n "  -> Umounting all.. "
 umount $rootMount/dev/pts
 umount $rootMount/dev
 umount $rootMount/proc
 umount $rootMount/sys
 umount $bootMount
 umount -lf $rootMount
+echo "Done."
