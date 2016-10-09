@@ -1,8 +1,8 @@
 #!/bin/bash
 
 distroImage=https://downloads.raspberrypi.org/raspbian_lite_latest
-bootMount=/mnt/image/boot
-rootMount=/mnt/image/root
+bootMount=/mnt/img/boot
+rootMount=/mnt/img/root
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
@@ -10,14 +10,14 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 # Ask user to download if there is no image..
-if [ -z "$(ls -1 images/*.img 2>/dev/null)" ]
+if [ -z "$(ls -1 img/*.img 2>/dev/null)" ]
 then
-  echo -e "No image found in 'images/' dir.\n"
+  echo -e "No image found in 'img/' dir.\n"
   read -p "Download image from downloads.raspberrypi.org [Yy/Nn]? " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]
   then
-    echo "Ok exiting, download image yourself and put it in 'images/' dir."
+    echo "Ok exiting, download image yourself and put it in 'img/' dir."
     exit 1
   fi
 
@@ -35,7 +35,7 @@ then
 
   # Unziping
   echo -n "  -> Unziping.. "
-  unzip -uo /tmp/raspbian.zip -d images/ > /dev/null
+  unzip -uo /tmp/raspbian.zip -d img/ > /dev/null
   echo "Ok."
 
   echo -n "  -> Cleaning.. "
@@ -43,8 +43,8 @@ then
   echo -e "Ok\n"
 fi
 
-imageList=$(ls images/*.img 2>/dev/null)
-imageCount=$(ls -1 images/*.img 2>/dev/null | wc -l)
+imageList=$(ls img/*.img 2>/dev/null)
+imageCount=$(ls -1 img/*.img 2>/dev/null | wc -l)
 selectedFile=''
 
 echo "Searching for image.. "
@@ -135,17 +135,17 @@ function doneChroot() {
 }
 
 function moduleScript() {
-  moduleList=$(ls -1 modules/*.load | sed 's/.load//')
+  moduleList=$(ls -1 mod.d/*.load | sed 's/.load//')
 
-  mkdir -p $rootMount/tmp/modules
-  echo "#bin/sh" > $rootMount/tmp/modules.sh
+  mkdir -p $rootMount/tmp/mod.d
+  echo "#bin/sh" > $rootMount/tmp/mod.sh
   for modulePath in $moduleList
   do
-    cp $modulePath $rootMount/tmp/modules
-    echo "sh /tmp/$modulePath" >> $rootMount/tmp/modules.sh
+    cp $modulePath $rootMount/tmp/mod.d
+    echo "sh /tmp/$modulePath" >> $rootMount/tmp/mod.sh
   done
 
-  echo "rm -rf /tmp/*" >> $rootMount/tmp/modules.sh
+  echo "rm -rf /tmp/*" >> $rootMount/tmp/mod.sh
 }
 
 # Mounting image to $rootMount & $bootMount
@@ -162,7 +162,7 @@ echo "Done"
 
 # Launch chroot
 echo "  *** Starting modulestart script ***"
-chroot $rootMount /bin/sh /tmp/modules.sh
+chroot $rootMount /bin/sh /tmp/mod.sh
 
 # Remove chroot related files & umount chroot stuff
 doneChroot
