@@ -1,4 +1,4 @@
-<img src="docs/entropi.svg" alt="Entropi Logo" width="128">
+<img src="docs/entropi.png" alt="Entropi Logo">
 > Tool used to modify RaspberryPi image automatically, to make it secure and almost undetecable on network.
 
 # Why this name ?
