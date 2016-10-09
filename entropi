@@ -137,15 +137,14 @@ function doneChroot() {
 function moduleScript() {
   moduleList=$(ls -1 mod.d/*.load | sed 's/.load//')
 
-  mkdir -p $rootMount/tmp/mod.d
-  echo "#bin/sh" > $rootMount/tmp/mod.sh
+  echo -e "#bin/sh\n" > $rootMount/tmp/mod.sh
   for modulePath in $moduleList
   do
-    cp $modulePath $rootMount/tmp/mod.d
-    echo "sh /tmp/$modulePath" >> $rootMount/tmp/mod.sh
+    echo -e "$(cat $modulePath)\n" >> $rootMount/tmp/mod.sh
   done
 
-  echo "rm -rf /tmp/*" >> $rootMount/tmp/mod.sh
+  echo "# Clean /tmp
+rm -rf /tmp/*" >> $rootMount/tmp/mod.sh
 }
 
 # Mounting image to $rootMount & $bootMount
@@ -156,12 +155,12 @@ doChroot
 echo -e "\nEverything ready for chroot !\n"
 
 # Generating script
-echo -n "Generating modulestart script.. "
+echo -n "Generating mod.sh script.. "
 moduleScript
 echo "Done"
 
 # Launch chroot
-echo "  *** Starting modulestart script ***"
+echo "  *** Starting mod.sh script ***"
 chroot $rootMount /bin/sh /tmp/mod.sh
 
 # Remove chroot related files & umount chroot stuff
