@@ -1,2 +1,16 @@
 # Disable ping answer
 echo "net.ipv4.icmp_echo_ignore_all=1" >> /etc/sysctl.conf && sysctl --system
+
+# Disable Bonjour service
+update-rc.d -f avahi-daemon remove
+service avahi-daemon stop
+apt remove avahi-daemon -y
+apt autoremove
+
+# Spoof mac address
+echo "#!/bin/sh
+if [ \"\$IFACE\" = eth0 ]
+then
+  ip link set dev \"\$IFACE\" address 58:AC:78:$(< /dev/urandom tr -dc 0-9 | head -c2):$(< /dev/urandom tr -dc 0-9 | head -c2):$(< /dev/urandom tr -dc 0-9 | head -c2)
+fi
+exit 0" > /etc/network/if-up.d/changemac

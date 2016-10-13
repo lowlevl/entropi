@@ -1,0 +1,119 @@
+# Generate randomness
+sshPort=$(< /dev/urandom tr -dc 0-9 | head -c5)
+rootPass=$(< /dev/urandom tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
+gateUserName=$(< /dev/urandom tr -dc a-z0-9 | head -c8)
+gateUserPass=$(< /dev/urandom tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
+
+# Creating bridge user
+useradd --create-home
+( echo $gateUserPass ; echo $gateUserPass ) | passwd $gateUserName
+
+# Remove default user
+userdel -rf pi
+
+# Remove sudo package
+apt remove sudo -y
+apt autoremove
+
+# Create sshd_config file
+echo "# Modified version, more secure
+# See the sshd(8) manpage for details
+
+# -- Networking options -- #
+
+# Listen on a non-standard port > 1024
+Port $sshPort
+
+# Restrict listen. inet = IPv4, inet6 = IPv6, any = both
+AddressFamily inet
+
+# Listen
+ListenAddress 0.0.0.0
+
+# Only use protocol version 2
+Protocol 2
+
+# Disable XForwarding unless you need it
+X11Forwarding no
+
+# Disable TCPKeepAlive and use ClientAliveInterval instead to prevent TCP Spoofing attacks
+TCPKeepAlive no
+ClientAliveInterval 360
+ClientAliveCountMax 0
+
+
+# -- Key Configuration -- #
+
+# HostKeys for protocol version 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_dsa_key
+
+#Privilege Separation is turned on for security
+UsePrivilegeSeparation yes
+
+# Use public key authentication
+PubkeyAuthentication yes
+AuthorizedKeysFile %h/.ssh/authorized_keys
+
+
+# -- Authentication -- #
+
+# Whitelist allowed users
+AllowUsers $gateUserName
+
+# Chroot bridge user
+Match user $gateUserName
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+
+# 20s to login
+LoginGraceTime 20
+
+# No root login
+PermitRootLogin no
+
+# Force permissions checks on keyfiles and directories
+StrictModes yes
+
+# Don't read the user's ~/.rhosts and ~/.shosts files
+IgnoreRhosts yes
+
+# Similar for protocol version 2
+HostbasedAuthentication no
+
+# Don't trust ~/.ssh/known_hosts for RhostsRSAAuthentication
+IgnoreUserKnownHosts yes
+
+# To enable empty passwords, change to yes (NOT RECOMMENDED)
+PermitEmptyPasswords no
+
+# Disable challenge and response auth. Unessisary when using keys
+ChallengeResponseAuthentication no
+
+# Allow passwords
+PasswordAuthentication yes
+
+# Using PAM, for password auth
+UsePAM yes
+
+# Don't use login(1)
+UseLogin no
+
+
+# -- Misc -- #
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Print the last time the user logged in
+PrintLastLog yes
+
+# Bruteforce protect
+MaxAuthTries 2
+MaxStartups 8:16:32
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+Subsystem sftp /usr/lib/openssh/sftp-server" > /etc/ssh/sshd_config
