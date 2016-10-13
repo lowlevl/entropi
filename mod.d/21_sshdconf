@@ -5,15 +5,18 @@ gateUserName=$(< /dev/urandom tr -dc a-z0-9 | head -c8)
 gateUserPass=$(< /dev/urandom tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
 
 # Creating bridge user
-useradd --create-home
+useradd --create-home $gateUserName
+
+# Set passwords
 ( echo $gateUserPass ; echo $gateUserPass ) | passwd $gateUserName
+( echo $rootPass ; echo $rootPass ) | passwd root
 
 # Remove default user
 userdel -rf pi
 
 # Remove sudo package
-apt remove sudo -y
-apt autoremove
+apt-get remove sudo -y
+apt-get autoremove -y
 
 # Create sshd_config file
 echo "# Modified version, more secure

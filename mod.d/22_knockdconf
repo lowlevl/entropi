@@ -1,5 +1,5 @@
 # Install knockd
-apt install knockd -y
+apt-get install knockd -y
 
 # Create conf file
 echo "[options]

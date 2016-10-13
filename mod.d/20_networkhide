@@ -4,8 +4,8 @@ echo "net.ipv4.icmp_echo_ignore_all=1" >> /etc/sysctl.conf && sysctl --system
 # Disable Bonjour service
 update-rc.d -f avahi-daemon remove
 service avahi-daemon stop
-apt remove avahi-daemon -y
-apt autoremove
+apt-get remove avahi-daemon -y
+apt-get autoremove -y
 
 # Spoof mac address
 echo "#!/bin/sh

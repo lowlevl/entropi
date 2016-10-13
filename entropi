@@ -137,13 +137,14 @@ function doneChroot() {
 function moduleScript() {
   moduleList=$(ls -1 mod.d/*.load | sed 's/.load//')
 
-  echo -e "#bin/sh\n" > $rootMount/tmp/mod.sh
+  echo -e "#!/bin/sh\n
+infoFile=/boot/info.txt\n" > $rootMount/tmp/mod.sh
   for modulePath in $moduleList
   do
     echo -e "$(cat $modulePath)\n" >> $rootMount/tmp/mod.sh
   done
 
-  echo "# Clean /tmp
+  echo -e "# Clean /tmp
 rm -rf /tmp/*" >> $rootMount/tmp/mod.sh
 }
 
