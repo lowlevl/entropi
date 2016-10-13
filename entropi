@@ -1,8 +1,8 @@
 #!/bin/bash
 
 distroImage=https://downloads.raspberrypi.org/raspbian_lite_latest
-bootMount=/mnt/img/boot
 rootMount=/mnt/img/root
+bootMount=$rootMount/boot
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
@@ -87,12 +87,12 @@ function mountImage() {
   echo "Ok"
 
   # Mount
-  echo -n "  -> Mounting /boot to $bootMount.. "
-  mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
-  echo "Ok"
   echo -n "  -> Mounting / to $rootMount.. "
   mount -v -o offset=$rootOffset -t ext4 $selectedFile $rootMount > /dev/null
   echo -e "Ok\n"
+  echo -n "  -> Mounting /boot to $bootMount.. "
+  mount -v -o offset=$bootOffset -t vfat $selectedFile $bootMount > /dev/null
+  echo "Ok"
 }
 function umountImage() {
   # Umount all system thing
