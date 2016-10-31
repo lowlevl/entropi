@@ -8,3 +8,4 @@
   - qemu-user-static
   - wget
   - fdisk
+  - unzip
