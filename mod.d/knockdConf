@@ -2,15 +2,14 @@
 apt-get install knockd -y
 
 # Generate sequence
-knockCount=$(cat /dev/urandom | tr -dc 4-6 | head -c1)
 knockSequence=""
-for (( i=1; i<=$knockCount; i++ ))
+for i in {1..5}
 do
   if [ $i == 1 ]
   then
-    knockSequence="$((($(cat /dev/urandom | tr -dc 0-9 | head -c5) % 65535) + 1024))"
+    knockSequence="$((($(cat /dev/urandom | tr -dc 1-9 | head -c5) % 65535) + 1024))"
   else
-    knockSequence="$knockSequence, $((($(cat /dev/urandom | tr -dc 0-9 | head -c5) % 65535) + 1024))"
+    knockSequence="$knockSequence, $((($(cat /dev/urandom | tr -dc 1-9 | head -c5) % 65535) + 1024))"
   fi
 done
 
