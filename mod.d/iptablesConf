@@ -8,7 +8,7 @@ echo "*filter
 :OUTPUT ACCEPT [0:0]
 -A INPUT -i lo -j ACCEPT
 -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT" > /etc/iptables/rules.v4
-if [ 0 ]
+if ! isLoaded knockdConf
 then
   echo "-A INPUT -p tcp -m tcp --dport $sshPort -j ACCEPT" >> /etc/iptables/rules.v4
 fi

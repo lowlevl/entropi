@@ -135,13 +135,42 @@ function doneChroot() {
 }
 
 function moduleScript() {
-  moduleList=$(ls -1 mod.d/*.load | sed 's/.load//')
+  moduleList=$(bash loadList.sh)
 
-  echo -e "#!/bin/sh\n
-infoFile=/boot/info.txt\n" > $rootMount/tmp/mod.sh
+  echo -e "#!/bin/sh
+infoFile=/boot/info.txt
+moduleList=\"$moduleList\"
+
+# Function to know if module is loaded
+function isLoaded() {
+  local moduleName=\$1
+
+  # Search for module in moduleList
+  if echo \$moduleList | grep -wq \$moduleName
+  then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to write info to infoFile
+function writeInfo() {
+  local toWrite=\$1
+
+  # Check if file exist
+  if [ ! -f \$infoFile ]
+  then
+    touch \$infoFile
+  fi
+
+  echo \"\$toWrite\" >> \$infoFile
+}\n" > $rootMount/tmp/mod.sh
+
   for modulePath in $moduleList
   do
-    echo -e "$(cat $modulePath)\n" >> $rootMount/tmp/mod.sh
+    echo -e "echo -e \"\\\n  ***--- Module: $modulePath ---***\"
+$(cat $modulePath)\n" >> $rootMount/tmp/mod.sh
   done
 
   echo -e "# Clean /tmp
@@ -162,7 +191,7 @@ echo "Done"
 
 # Launch chroot
 echo "  *** Starting mod.sh script ***"
-chroot $rootMount /bin/sh /tmp/mod.sh
+chroot $rootMount /bin/bash /tmp/mod.sh
 
 # Remove chroot related files & umount chroot stuff
 doneChroot

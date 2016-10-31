@@ -1,8 +1,8 @@
 # Generate randomness
-sshPort=$(< /dev/urandom tr -dc 0-9 | head -c5)
-rootPass=$(< /dev/urandom tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
-gateUserName=$(< /dev/urandom tr -dc a-z0-9 | head -c8)
-gateUserPass=$(< /dev/urandom tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
+sshPort=$((($(cat /dev/urandom | tr -dc 0-9 | head -c5) % 65535) + 1024))
+rootPass=$(cat /dev/urandom | tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
+gateUserName=$(cat /dev/urandom | tr -dc a-z0-9 | head -c8)
+gateUserPass=$(cat /dev/urandom | tr -dc '0-9!@#$%a-zA-Z-_' | head -c16)
 
 # Creating bridge user
 useradd --create-home $gateUserName
@@ -64,11 +64,6 @@ AuthorizedKeysFile %h/.ssh/authorized_keys
 # Whitelist allowed users
 AllowUsers $gateUserName
 
-# Chroot bridge user
-Match user $gateUserName
-  ChrootDirectory %h
-  ForceCommand internal-sftp
-
 # 20s to login
 LoginGraceTime 20
 
@@ -120,3 +115,9 @@ MaxStartups 8:16:32
 AcceptEnv LANG LC_*
 
 Subsystem sftp /usr/lib/openssh/sftp-server" > /etc/ssh/sshd_config
+
+# Write infos to hint file
+writeInfo "SSH Port: $sshPort"
+writeInfo "Root password: $rootPass"
+writeInfo "Gate username: $gateUserName"
+writeInfo "Gate user password: $gateUserPass"

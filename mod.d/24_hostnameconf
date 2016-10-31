@@ -1,5 +1,0 @@
-# Change hostname in /etc/hosname
-echo "(none)" > /etc/hostname
-
-# Change hostname in /etc/hosts
-sed -i -- 's/raspberrypi/(none)/g' /etc/hosts

@@ -1,0 +1,40 @@
+# Install knockd
+apt-get install knockd -y
+
+# Generate sequence
+knockCount=$(cat /dev/urandom | tr -dc 4-6 | head -c1)
+knockSequence=""
+for (( i=1; i<=$knockCount; i++ ))
+do
+  if [ $i == 1 ]
+  then
+    knockSequence="$((($(cat /dev/urandom | tr -dc 0-9 | head -c5) % 65535) + 1024))"
+  else
+    knockSequence="$knockSequence, $((($(cat /dev/urandom | tr -dc 0-9 | head -c5) % 65535) + 1024))"
+  fi
+done
+
+# Create conf file
+echo "[options]
+  logfile = /var/log/knockd.log
+
+[SSH]
+  sequence = $knockSequence
+  tcpflags = syn
+  seq_timeout = 12" > /etc/knockd.conf
+if ! isLoaded sshdConf
+then
+echo "  start_command = /sbin/iptables -I INPUT 1 -s %IP% -p tcp --dport 22 -j ACCEPT
+  cmd_timeout = 8
+  stop_command = /sbin/iptables -D INPUT -s %IP% -p tcp --dport 22 -j ACCEPT" >> /etc/knockd.conf
+else
+echo "  start_command = /sbin/iptables -I INPUT 1 -s %IP% -p tcp --dport $sshPort -j ACCEPT
+  cmd_timeout = 8
+  stop_command = /sbin/iptables -D INPUT -s %IP% -p tcp --dport $sshPort -j ACCEPT" >> /etc/knockd.conf
+fi
+
+# Enable daemon
+sed -i '/START_KNOCKD=/s/.*/START_KNOCKD=1/' /etc/default/knockd
+
+# Write infos to hint file
+writeInfo "Knock sequence: $knockSequence"
