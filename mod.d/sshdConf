@@ -122,3 +122,6 @@ writeInfo "SSH Port: $sshPort"
 writeInfo "Root password: $rootPass"
 writeInfo "Gate username: $gateUserName"
 writeInfo "Gate user password: $gateUserPass"
+
+# Make sure ssh server is activated
+update-rc.d ssh enable
