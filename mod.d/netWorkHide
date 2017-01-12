@@ -9,7 +9,7 @@ apt-get autoremove -y
 
 # Spoof mac address
 echo "#!/bin/sh
-if [ \"\$IFACE\" = eth0 ]
+if [ \"\$IFACE\" == \"eth0\" ]
 then
   ip link set dev \"\$IFACE\" address 58:AC:78:$(< /dev/urandom tr -dc 0-9 | head -c2):$(< /dev/urandom tr -dc 0-9 | head -c2):$(< /dev/urandom tr -dc 0-9 | head -c2)
 fi
